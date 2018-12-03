@@ -5,6 +5,7 @@ extern crate regex;
 
 use rayon::prelude::*;
 use regex::Regex;
+use std::collections::HashSet;
 use std::error::Error;
 use std::io;
 use std::io::Read;
@@ -25,89 +26,80 @@ fn run() -> Result<(), Box<Error>> {
 
     // part 1
     let mut grid = Grid::new(1000, 1000);
-    for patch in &patches {
+    for patch in patches {
         grid.claim(patch)?;
     }
-
     println!("{} squares are overlapping", grid.count_overlapping());
 
-    // TODO Improve part 2
-    let mut found = None;
-    for patch in &patches {
-        let covered = &grid.full_patch_coverage(patch)?;
-        if *covered {
-            found = Some(patch.id);
-            break;
-        }
-    }
-
-    if let Some(id) = found {
-        println!("First non-overlapping patch was '#{}'", id);
-    } else {
-        eprintln!("No non overlapping patches found!")
+    // part 2
+    let solo_claimed_patches = grid.solo_claimed_patches();
+    match solo_claimed_patches.as_slice() {
+        [] => eprintln!("No non overlapping squares!"),
+        [solo] => println!("Single non overlapping square: #{}", solo),
+        _ => eprintln!(
+            "More than one non overlapping square: {:#?}",
+            solo_claimed_patches
+        ),
     }
 
     Ok(())
 }
 
-#[test]
 #[derive(Debug, Clone)]
 struct Grid {
     size_x: usize,
     size_y: usize,
-    squares: Vec<usize>,
+    squares: Vec<Vec<usize>>,
+    patches: Vec<Patch>,
 }
 
 impl Grid {
     fn new(size_x: usize, size_y: usize) -> Self {
-        let squares = vec![0; size_x * size_y];
+        let squares = vec![Vec::new(); size_x * size_y];
+        let patches = Vec::new();
         Grid {
             size_x,
             size_y,
             squares,
+            patches,
         }
     }
-    fn get(&self, x: usize, y: usize) -> Result<usize, Box<Error>> {
+
+    fn _claim_cell<'a>(&mut self, id: usize, x: usize, y: usize) -> Result<(), Box<Error>> {
         let idx = self.size_x * y + x;
         if idx > self.squares.len() {
             return Err(From::from("Index out of bounds"));
         }
-        Ok(self.squares[idx])
-    }
-    fn get_mut(&mut self, x: usize, y: usize) -> Result<&mut usize, Box<Error>> {
-        let idx = self.size_x * y + x;
-        if idx > self.squares.len() {
-            return Err(From::from("Index out of bounds"));
-        }
-        Ok(&mut self.squares[idx])
-    }
-    fn _claim_cell<'a>(&mut self, x: usize, y: usize) -> Result<(), Box<Error>> {
-        let cell = self.get_mut(x, y)?;
-        *cell += 1;
+        self.squares[idx].push(id);
         Ok(())
     }
+
     // Operations on Patches
-    fn claim(&mut self, patch: &Patch) -> Result<(), Box<Error>> {
+    fn claim(&mut self, patch: Patch) -> Result<(), Box<Error>> {
         for x in 0..patch.size_x {
             for y in 0..patch.size_y {
-                self._claim_cell(patch.offset_x + x, patch.offset_y + y)?;
+                self._claim_cell(patch.id, patch.offset_x + x, patch.offset_y + y)?;
             }
         }
+        self.patches.push(patch);
         Ok(())
     }
-    fn full_patch_coverage(&self, patch: &Patch) -> Result<bool, Box<Error>> {
-        for x in 0..patch.size_x {
-            for y in 0..patch.size_y {
-                let value = self.get(patch.offset_x + x, patch.offset_y + y)?;
-                if value != 1 {
-                    return Ok(false);
-                }
+
+    fn solo_claimed_patches(&self) -> Vec<usize> {
+        let mut all: HashSet<_> = self.patches.iter().map(|patch| patch.id).collect();
+        for square_ids in self.squares.iter().filter(|square| square.len() > 1) {
+            for id in square_ids {
+                all.remove(id);
             }
         }
-        Ok(true)
+        all.iter().map(|id| id.to_owned()).collect()
     }
+
     fn count_overlapping(&self) -> usize {
-        self.squares.par_iter().filter(|count| **count > 1).count()
+        self.squares
+            .par_iter()
+            .filter(|count| count.len() > 1)
+            .count()
     }
 }
 
@@ -148,6 +140,7 @@ impl FromStr for Patch {
     }
 }
 
+#[test]
 fn parse_patch() {
     let input = "#123 @ 3,2: 5x4";
 
@@ -174,7 +167,7 @@ fn claim_origin() {
         size_x: 1,
     };
 
-    grid.claim(&patch).unwrap();
+    grid.claim(patch).unwrap();
 
     assert_eq!(grid.squares[0], 1);
     assert_eq!(grid.squares[1], 0);
@@ -193,7 +186,7 @@ fn claim_last() {
         size_x: 1,
     };
 
-    grid.claim(&patch).unwrap();
+    grid.claim(patch).unwrap();
 
     println!{"{:#?}", grid};
     assert_eq!(grid.squares[0], 0);
@@ -213,7 +206,7 @@ fn claim_all() {
         size_x: 2,
     };
 
-    grid.claim(&patch).unwrap();
+    grid.claim(patch).unwrap();
 
     assert_eq!(grid.squares[0], 1);
     assert_eq!(grid.squares[1], 1);
