@@ -73,6 +73,7 @@ fn test_example() {
     assert_eq!(output, 12)
 }
 
+#[test]
 fn test_common_example(){
     let input = vec!["abcde", "fghij", "klmno", "pqrst", "fguij", "axcye", "wvxyz"];
     let result = common_box_id_letters(&input);

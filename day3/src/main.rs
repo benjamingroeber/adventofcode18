@@ -65,7 +65,7 @@ impl Grid {
         }
     }
 
-    fn _claim_cell<'a>(&mut self, id: usize, x: usize, y: usize) -> Result<(), Box<Error>> {
+    fn _claim_cell(&mut self, id: usize, x: usize, y: usize) -> Result<(), Box<Error>> {
         let idx = self.size_x * y + x;
         if idx > self.squares.len() {
             return Err(From::from("Index out of bounds"));
@@ -169,10 +169,10 @@ fn claim_origin() {
 
     grid.claim(patch).unwrap();
 
-    assert_eq!(grid.squares[0], 1);
-    assert_eq!(grid.squares[1], 0);
-    assert_eq!(grid.squares[2], 0);
-    assert_eq!(grid.squares[3], 0);
+    assert_eq!(grid.squares[0].len(), 1);
+    assert_eq!(grid.squares[1].len(), 0);
+    assert_eq!(grid.squares[2].len(), 0);
+    assert_eq!(grid.squares[3].len(), 0);
 }
 
 #[test]
@@ -189,10 +189,10 @@ fn claim_last() {
     grid.claim(patch).unwrap();
 
     println!{"{:#?}", grid};
-    assert_eq!(grid.squares[0], 0);
-    assert_eq!(grid.squares[1], 0);
-    assert_eq!(grid.squares[2], 0);
-    assert_eq!(grid.squares[3], 1);
+    assert_eq!(grid.squares[0].len(), 0);
+    assert_eq!(grid.squares[1].len(), 0);
+    assert_eq!(grid.squares[2].len(), 0);
+    assert_eq!(grid.squares[3].len(), 1);
 }
 
 #[test]
@@ -208,8 +208,8 @@ fn claim_all() {
 
     grid.claim(patch).unwrap();
 
-    assert_eq!(grid.squares[0], 1);
-    assert_eq!(grid.squares[1], 1);
-    assert_eq!(grid.squares[2], 1);
-    assert_eq!(grid.squares[3], 1);
+    assert_eq!(grid.squares[0].len(), 1);
+    assert_eq!(grid.squares[1].len(), 1);
+    assert_eq!(grid.squares[2].len(), 1);
+    assert_eq!(grid.squares[3].len(), 1);
 }
