@@ -188,7 +188,6 @@ fn claim_last() {
 
     grid.claim(patch).unwrap();
 
-    println!{"{:#?}", grid};
     assert_eq!(grid.squares[0].len(), 0);
     assert_eq!(grid.squares[1].len(), 0);
     assert_eq!(grid.squares[2].len(), 0);
