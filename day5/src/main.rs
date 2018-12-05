@@ -66,16 +66,16 @@ impl Polymer {
             .chars()
             // if given, filter units matching the ignore_units from iterator
             .filter(|c| {
-                ignore_unit
-                    .map(|ignore| ignore.to_ascii_lowercase() != c.to_ascii_lowercase())
-                    .unwrap_or(true)
+                ! ignore_unit
+                    .map(|ignore| _eq_unit(*c, ignore))
+                    .unwrap_or(false)
             });
 
         let mut polymer = String::new();
         for current in not_ignored_units {
             if let Some(last) = polymer.chars().last() {
                 // remove last pushed unit, and ignore current unit, if they match
-                if current != last && current.to_ascii_lowercase() == last.to_ascii_lowercase() {
+                if current != last && _eq_unit(current, last) {
                     polymer.pop();
                     continue;
                 }
@@ -84,6 +84,10 @@ impl Polymer {
         }
         ReducedPolymer(polymer)
     }
+}
+
+fn _eq_unit(unit: Unit, other: Unit) -> bool {
+    unit.to_ascii_lowercase() == other.to_ascii_lowercase()
 }
 
 impl FromStr for Polymer {
