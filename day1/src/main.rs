@@ -22,7 +22,7 @@ fn parse_changes_from_stdin() -> Result<Vec<i64>, Box<Error>> {
 
     input
         .lines()
-        .map(|line| line.parse().map_err(|e| Box::from(e)))
+        .map(|line| line.parse().map_err(Box::from))
         .collect()
 }
 
