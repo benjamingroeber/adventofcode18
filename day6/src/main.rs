@@ -20,18 +20,22 @@ fn run() -> Result<(), Box<Error>> {
     let grid = SubGrid::new(&destinations?)?;
 
     // part1
-    let a = grid.finite_area();
-    let mut v = a.iter().collect::<Vec<_>>();
-    v.sort_by_key(|x| x.1);
-    println!("{:#?}", v);
-    if let Some((largest, count)) = grid.finite_area().iter().max_by_key(|area| area.1) {
+    let finite_areas = grid.finite_area();
+    if let Some((largest, count)) = finite_areas.iter().max_by_key(|area| area.1) {
         println!(
-            "The Destination {:?} has the largest area of {}.",
+            "The Destination {:?} has the largest area of '{}'.",
             largest, count
         );
     } else {
         return Err(From::from("Could not determine largest area"));
     }
+
+    //part2
+    let area = grid.distances.iter().map(|(dists,_)|{
+        dists.iter().map(|(_,distance)| distance).sum()
+    }).filter(|sum: &usize| *sum < 10_000).count();
+
+    println!("The area of all points with summed distance < 10000 is '{}'", area);
 
     Ok(())
 }
