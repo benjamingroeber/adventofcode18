@@ -31,11 +31,17 @@ fn run() -> Result<(), Box<Error>> {
     }
 
     //part2
-    let area = grid.distances.iter().map(|(dists,_)|{
-        dists.iter().map(|(_,distance)| distance).sum()
-    }).filter(|sum: &usize| *sum < 10_000).count();
+    let area = grid
+        .distances
+        .iter()
+        .map(|(dists, _)| dists.iter().map(|(_, distance)| distance).sum())
+        .filter(|sum: &usize| *sum < 10_000)
+        .count();
 
-    println!("The area of all points with summed distance < 10000 is '{}'", area);
+    println!(
+        "The area of all points with summed distance < 10000 is '{}'",
+        area
+    );
 
     Ok(())
 }
@@ -72,8 +78,16 @@ impl SubGrid {
         if destinations.is_empty() {
             return Err(From::from("Destinations may not be empty!"));
         }
-        let size_x = destinations.iter().map(|d| d.x).max().unwrap();
-        let size_y = destinations.iter().map(|d| d.y).max().unwrap();
+        let size_x = destinations
+            .iter()
+            .map(|d| d.x)
+            .max()
+            .expect("Non empty destinations guarantee a value here!");
+        let size_y = destinations
+            .iter()
+            .map(|d| d.y)
+            .max()
+            .expect("Non empty destinations guarantee a value here!");
 
         let mut distances = Vec::new();
         let mut bordering = HashSet::new();
@@ -83,7 +97,10 @@ impl SubGrid {
                     .iter()
                     .map(|d| (d.to_owned(), d.manhattan_distance(x, y)))
                     .collect();
-                let min_distance = destination_distances.iter().min_by_key(|d| d.1).unwrap();
+                let min_distance = destination_distances
+                    .iter()
+                    .min_by_key(|d| d.1)
+                    .expect("At least one destination, means at least a minimum distance");
                 let min_count = destination_distances
                     .iter()
                     .filter(|d| *d.1 == *min_distance.1)
@@ -120,12 +137,6 @@ impl SubGrid {
                 acc
             })
     }
-
-    fn rows(
-        &self,
-    ) -> impl Iterator<Item = &[(HashMap<Destination, Distance>, Option<Destination>)]> {
-        self.distances.chunks(self.size_x)
-    }
 }
 
 impl Destination {
@@ -136,19 +147,4 @@ impl Destination {
     }
 }
 
-#[test]
-fn test_example() {
-    let input = vec![
-        Destination { x: 1, y: 1 },
-        Destination { x: 1, y: 6 },
-        Destination { x: 8, y: 3 },
-        Destination { x: 3, y: 4 },
-        Destination { x: 5, y: 5 },
-        Destination { x: 8, y: 9 },
-    ];
-
-    let subgrid = SubGrid::new(&input).unwrap();
-    let areas = subgrid.finite_area();
-    println!("{:#?}", subgrid);
-    println!("{:#?}", areas);
-}
+// Due to lack of time, today there are no tests.
