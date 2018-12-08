@@ -10,8 +10,9 @@ fn run() -> Result<(), Box<Error>> {
 
     let numbers : Result<Vec<usize>,_> = input.split_whitespace().map(|number| number.parse()).collect();
 
-    let root = parse_nodes(numbers?.as_slice());
-    println!("The sum of all metadata is: {}", root?.metadata_sum());
+    let root = parse_nodes(numbers?.as_slice())?;
+    println!("The sum of all metadata is: {}", root.metadata_sum());
+    println!("The value of the root node is: {}", root.value());
 
     Ok(())
 }
@@ -44,6 +45,23 @@ impl Node {
         let child_sum : usize = self.children.iter().map(|c|c.metadata_sum()).sum();
         let own: usize = self.metadata.iter().sum();
         child_sum + own
+    }
+
+    fn value(&self) -> usize {
+        // The value of Nodes with no children equals the sum of the metadata
+        if self.child_count == 0 {
+            self.metadata.iter().sum()
+
+        // The value of Nodes with children equals to The Sum of the child nodes values,
+        // where child nodes are referred by the metadata entries used as index
+        } else {
+            self.metadata.iter().map(|data| {
+                // 1 refers to first entry, and so on
+                let idx = data - 1;
+                // ignore non existing referenced children
+                self.children.get(idx).map(|child|child.value()).unwrap_or(0)
+            }).sum()
+        }
     }
 
 }
