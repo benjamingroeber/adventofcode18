@@ -1,14 +1,14 @@
 fn main() {
     // part 1
     {
-        let game = Game::new(459, 72103);
+        let game = Game::new(459, 72_103);
         let result = game.play();
         let high_score = result.into_iter().max().unwrap_or(0);
         println!("Game 1 High Score: {}", high_score);
     }
     // part 2
     {
-        let game = Game::new(459, 7210300);
+        let game = Game::new(459, 7_210_300);
         let result = game.play();
 
         let high_score = result.into_iter().max().unwrap_or(0);
@@ -26,7 +26,7 @@ struct Marble {
     prev: MarbleId,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 enum Direction {
     Clockwise,
     Counterclockwise,
