@@ -23,21 +23,21 @@ fn run() -> Result<(), Box<Error>> {
     let mut points = Points::new(point_list?);
 
     let mut i = 0;
+    let mut last_size = i64::max_value();
     loop {
-        let dimensions = points.dimensions()?;
-
-        // print possible results where all points are in a 100x100 grid
-        if dimensions.max_x - dimensions.min_x < 100 && dimensions.max_y - dimensions.min_x < 100 {
-            println!("{}s:{}\n\n", i, points);
-        }
         points.step();
-
-        // Exit before counter overflows
-        i += 1;
-        if i == u32::max_value() {
-            return Err(From::from("Could not find any constellation..."))
+        let dimensions = points.dimensions()?;
+        let current_size =
+            (dimensions.max_x - dimensions.min_x) + (dimensions.max_y - dimensions.min_y);
+        if current_size > last_size {
+            break;
         }
+        i += 1;
+        last_size = current_size;
     }
+    points.step_back();
+    println!("{}s:{}\n\n", i, points);
+    Ok(())
 }
 
 struct Points(Vec<Point>);
@@ -90,6 +90,13 @@ impl Points {
         for point in &mut self.0 {
             point.x += i64::from(point.vel_x);
             point.y += i64::from(point.vel_y);
+        }
+    }
+
+    fn step_back(&mut self) {
+        for point in &mut self.0 {
+            point.x -= i64::from(point.vel_x);
+            point.y -= i64::from(point.vel_y);
         }
     }
 }
