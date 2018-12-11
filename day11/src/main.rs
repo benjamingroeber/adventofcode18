@@ -1,39 +1,107 @@
+use rayon::prelude::*;
 use std::error::Error;
+use indicatif::ProgressBar;
 
 // THIS IS THE TEST INPUT
 const GRID_SERIAL: GridSerial = 2187;
+const GRID_SIZE: usize = 300;
 
 fn main() {
     if let Err(e) = run() {
         eprintln!("FATAL ERROR: {}", e)
     }
 }
+
 fn run() -> Result<(), Box<Error>> {
-    let grid = Grid::new(GRID_SERIAL, 300, 300);
-    let subgrid_size = 3;
+    let grid = Grid::new(GRID_SERIAL, GRID_SIZE, GRID_SIZE);
 
-    let mut subgrid_power: Vec<(usize, usize, PowerLevel)> = Vec::new();
-    for y in 0..grid.size_y - subgrid_size {
-        for x in 0..grid.size_x - subgrid_size {
-            let subgrid = grid.sub_grid(x, y, subgrid_size, subgrid_size)?;
-            let powerlevel = subgrid.iter().map(|n|n.power_level()).sum();
-            subgrid_power.push((subgrid[0].x, subgrid[0].y, powerlevel));
-        }
-    }
-    let max_power = subgrid_power
-        .iter()
-        .max_by_key(|n| n.2)
-        .ok_or("Could not determine maximum power level of sub-grids")?;
+    let most_powerful_subgrids = most_powerful_subgrid_for_square_sizes(&grid, GRID_SIZE);
 
+    // part 1 requests 3x3
+    let part1_grid = most_powerful_subgrids[2];
     println!(
-        "The Subgrid with the most stored power of {} starts at {},{}",
-        max_power.2, max_power.0, max_power.1
+        "The Subgrid of size {}x{} with the most stored power of {} starts at {},{}",
+        part1_grid.size_x,
+        part1_grid.size_y,
+        part1_grid.power_level_sum,
+        part1_grid.origin_x,
+        part1_grid.origin_y
     );
+
+    // part 2
+    let most_powerful_grid = most_powerful_subgrids
+        .iter()
+        .max_by_key(|grid| grid.power_level_sum)
+        .ok_or("Could not determine maximum subgrid power level")?;
+    println!(
+        "The Overall most powerfull subgrid is of size {}x{} with the most stored power of {} staring at {},{}",
+        most_powerful_grid.size_x, most_powerful_grid.size_y, most_powerful_grid.power_level_sum, most_powerful_grid.origin_x, most_powerful_grid.origin_y
+    );
+
     Ok(())
+}
+
+fn most_powerful_subgrid_for_square_sizes(grid: &Grid, size: usize) -> Vec<SubGrid> {
+    let bar = ProgressBar::new(size as u64);
+    let max_power_for_subgrid_size: Vec<_> = (1..size)
+        .into_par_iter()
+        .map(|subgrid_size| {
+            let grids = grid
+                .all_subgrids_with_size(subgrid_size, subgrid_size)
+                .unwrap();
+
+            bar.inc(1);
+            *grids.iter().max_by_key(|g| g.power_level_sum).unwrap()
+        })
+        .collect();
+    bar.finish();
+    max_power_for_subgrid_size
 }
 
 type PowerLevel = i32;
 type GridSerial = i32;
+
+#[derive(Copy, Clone,Debug)]
+struct SubGrid {
+    origin_x: usize,
+    origin_y: usize,
+    size_x: usize,
+    size_y: usize,
+    power_level_sum: PowerLevel,
+}
+
+#[derive(Debug, Clone)]
+struct Node {
+    grid_serial: i32,
+    x: usize,
+    y: usize,
+    power_level: PowerLevel,
+}
+
+impl Node {
+    fn new(x: usize, y: usize, grid_serial: GridSerial) -> Self {
+        let power_level = power_level(x, y, grid_serial);
+        Node {
+            grid_serial,
+            x,
+            y,
+            power_level,
+        }
+    }
+}
+
+fn power_level(x: usize, y: usize, grid_serial: GridSerial) -> PowerLevel {
+    // x plus 10
+    let rack_id = (x + 10) as PowerLevel;
+    let y = y as PowerLevel;
+    // rack ID * y coordinate, then plus GRID_SERIAL, then * rack ID
+    let power = rack_id * (grid_serial + rack_id * y);
+    // hundreds digit or zero
+    let power_level = if power > 100 { (power / 100) % 10 } else { 0 };
+
+    // final result minus 5
+    power_level - 5
+}
 
 #[derive(Debug, Clone)]
 struct Grid {
@@ -64,48 +132,46 @@ impl Grid {
         from_y: usize,
         size_x: usize,
         size_y: usize,
-    ) -> Result<Vec<&Node>, Box<Error>> {
-        if self.size_x < from_x + size_x || self.size_y < from_y + size_y {
+    ) -> Result<SubGrid, Box<Error>> {
+        if self.size_x <= from_x + size_x || self.size_y <= from_y + size_y {
             return Err(From::from("Subgrid must be fully inside grid"));
         }
 
-        let mut subgrid = Vec::with_capacity(size_y * size_x);
+        let mut power_level_sum = 0;
+        //        let mut subgrid = Vec::with_capacity(size_y * size_x);
+        let node_origin = &self.nodes[from_y * self.size_x + from_x];
         for offset_y in 0..size_y {
             for offset_x in 0..size_x {
-                let y = from_x + offset_y;
-                let x = from_y + offset_x;
+                let y = from_y + offset_y;
+                let x = from_x + offset_x;
 
-                subgrid.push(&self.nodes[y * self.size_x + x])
+                power_level_sum += self.nodes[y * self.size_x + x].power_level
             }
         }
-        Ok(subgrid)
+        Ok(SubGrid {
+            origin_x: node_origin.x,
+            origin_y: node_origin.y,
+            size_x,
+            size_y,
+            power_level_sum,
+        })
     }
-}
 
-#[derive(Copy, Debug, Clone)]
-struct Node {
-    grid_serial: i32,
-    x: usize,
-    y: usize,
-}
+    fn all_subgrids_with_size(
+        &self,
+        size_x: usize,
+        size_y: usize,
+    ) -> Result<Vec<SubGrid>, Box<Error>> {
+        let max_y = self.size_y - size_y;
+        let max_x = self.size_y - size_y;
 
-impl Node {
-    fn new(x: usize, y: usize, grid_serial: GridSerial) -> Self {
-        Node { grid_serial, x, y }
-    }
-    fn rack_id(&self) -> usize {
-        self.x + 10
-    }
-    fn power_level(&self) -> PowerLevel {
-        let rack_id = self.rack_id() as PowerLevel;
-        let y = self.y as PowerLevel;
-        // rack ID * y coordinate, then plus GRID_SERIAL, then * rack ID
-        let power = rack_id * (self.grid_serial + rack_id * y);
-        // hundreds digit or zero
-        let power_level = if power > 100 { (power / 100) % 10 } else { 0 };
-
-        // final result minus 5
-        power_level - 5
+        let mut subgrids: Vec<SubGrid> = Vec::new();
+        for y in 0..max_y {
+            for x in 0..max_x {
+                subgrids.push(self.sub_grid(x, y, size_x, size_y)?);
+            }
+        }
+        Ok(subgrids)
     }
 }
 
@@ -119,7 +185,7 @@ mod tests {
     #[test]
     fn test_power_level() {
         let node = Node::new(3, 5, TEST_SERIAL);
-        assert_eq!(4, node.power_level());
+        assert_eq!(4, node.power_level);
     }
 
     #[test]
@@ -129,7 +195,7 @@ mod tests {
 
         for (x, y, grid_serial, expected) in tests.iter() {
             let node = Node::new(*x, *y, *grid_serial);
-            assert_eq!(*expected, node.power_level())
+            assert_eq!(*expected, node.power_level)
         }
     }
 }
