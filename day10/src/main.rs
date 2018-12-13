@@ -103,7 +103,7 @@ impl Points {
 
 impl fmt::Display for Points {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        // TODO convert do fmt::error
+        // TODO return fmt::Error
         let dimensions = self.dimensions().unwrap();
 
         // len(), is max_idx + 1
@@ -181,28 +181,6 @@ impl FromStr for Point {
 
         Ok(Point { x, y, vel_x, vel_y })
     }
-}
-
-#[test]
-fn test_print() {
-    let mut points = Vec::new();
-    for x in -20..=20 {
-        for y in -10..=10 {
-            if y % 5 != 0 && (x % 3 == y || y > 5 || y < -5) {
-                points.push(Point {
-                    x,
-                    y,
-                    vel_x: 0,
-                    vel_y: 0,
-                })
-            }
-        }
-    }
-
-    let points = Points::new(points);
-    eprintln!("{}", points);
-
-    assert!(true)
 }
 
 #[test]
