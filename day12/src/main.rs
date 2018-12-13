@@ -10,6 +10,7 @@ fn main() {
     }
 }
 
+const TARGET_GENERATIONS: i64 = 50_000_000_000;
 fn run() -> Result<(), Box<Error>> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
@@ -26,7 +27,7 @@ fn run() -> Result<(), Box<Error>> {
         })
         .ok_or("Could not get initial config")??;
 
-    let mut pots = Pots::new(initial_config);
+    let mut pots = Pots::new(initial_config.clone());
 
     // parse rules
     let rules: Vec<Rule> = lines
@@ -44,6 +45,41 @@ fn run() -> Result<(), Box<Error>> {
         pots.sum_full_pot_numbers()
     );
 
+    // Admittedly not the prettiest solution
+    // Searching for a constant difference between rounds over an extended number of rounds to gain some confidence.
+    let mut pots = Pots::new(initial_config.clone());
+    let mut previous_sum = 0;
+    let mut constant_rate = 0;
+    let mut consistency = 0;
+    loop {
+        pots.next_generation(&rules);
+
+        let current_sum = pots.sum_full_pot_numbers();
+        let rate = current_sum - previous_sum;
+
+        if rate != constant_rate {
+            consistency = 0;
+//            println!("{} ({}) Factor: {}", i, pots.sum_full_pot_numbers(), rate);
+        } else {
+            // If the rate didn't change for 1000 rounds I assume that it won't do so anymore
+            if consistency >= 1000 {
+                break;
+            } else {
+                consistency += 1
+            }
+        }
+
+        previous_sum = current_sum;
+        constant_rate = rate;
+    }
+
+    // we extrapolate the value by adding the known sum to the constant rate multiplied by the remaining generations
+    let pot_sum = pots.sum_full_pot_numbers() + constant_rate * (TARGET_GENERATIONS - pots.generation as i64);
+    println!(
+        "I guessed a constant rate of {} per generation leading to a value of {}",
+        constant_rate, pot_sum
+    );
+
     Ok(())
 }
 
@@ -55,7 +91,7 @@ enum Pot {
 
 #[derive(Debug, Clone)]
 struct Pots {
-    leftmost_number: i32,
+    leftmost_number: i64,
     generation: usize,
     pots: Vec<Pot>,
 }
@@ -75,12 +111,12 @@ impl Pots {
     }
 
     // sum the numbers written on the full pots
-    fn sum_full_pot_numbers(&self) -> i32 {
+    fn sum_full_pot_numbers(&self) -> i64 {
         self.pots
             .iter()
             .enumerate()
             .filter(|(_, p)| **p == Pot::Full)
-            .map(|(i, _)| self.leftmost_number + i as i32)
+            .map(|(i, _)| self.leftmost_number + i as i64)
             .sum()
     }
 
